@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bokforge | Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="db.js"></script>
+<script src="accent.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Bricolage Grotesque', sans-serif; background: #f2f1ee; }
+
+  /* ── NAV (original) ── */
+  .nav-bar {
+    height: 64px; display: flex; justify-content: space-between; align-items: center;
+    padding: 0 16px; position: relative;
+    background: rgba(255,255,255,0.25); backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1); z-index: 1000;
+  }
+  .nav-bar .brand { font-weight: bold; font-size: 1.2rem; padding: 6px 10px; border-radius: 10px; color: #000; cursor: pointer; user-select: none; transition: background 0.15s; }
+  .nav-bar .brand:hover { background: rgba(0,0,0,0.05); }
+  .nav-bar .nav-icons { display: flex; gap: 12px; }
+  .nav-bar .nav-icons img { width: 24px; height: 24px; filter: drop-shadow(0 0 2px rgba(0,0,0,0.3)); transition: transform 0.2s; }
+  .nav-bar .nav-icons a:hover img { transform: scale(1.2); }
+  .nav-bar .nav-icons a { position: relative; }
+
+  /* ── HERO (original positions) ── */
+  .hero { position: relative; width: 100%; height: 500px; overflow: hidden; }
+  @media (max-width: 480px) { .hero { height: 420px; } }
+  .hero picture img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Fix: hero slides must fill height properly on mobile */
+  @media (max-width: 480px) {
+    .hero-slides { position: absolute; inset: 0; }
+    .hero-slide { position: absolute; inset: 0; }
+    .hero-slide img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+
+    /* Hide slide dot indicators on mobile */
+    .slide-dots { display: none !important; }
+
+    /* Smaller floating glass card — leaves room for photo */
+    .hero-card {
+      bottom: 16px; left: 12px; right: 12px; max-width: none; width: auto;
+      padding: 10px 14px; gap: 8px;
+    }
+    .hero-card .hero-tabs { display: none; }
+    .hero-card #pane-welcome { display: flex !important; }
+    .hero-card #pane-track { display: none !important; }
+
+    #pane-welcome { flex-direction: column; align-items: stretch; gap: 8px; }
+    .hero-card-text h1 { font-size: 0.88rem; margin-bottom: 1px; }
+    .hero-card-text p { font-size: 0.62rem; max-width: none; line-height: 1.35; }
+    .hero-shop-btn {
+      align-self: center; justify-content: center;
+      width: 100%; padding: 9px 18px;
+    }
+
+    /* "Track Order" tab — pinned near top-right corner */
+    .hero-track-tab {
+      position: absolute; top: 14px; right: 14px;
+      transform: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.22); backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.55); border-radius: 100px;
+      padding: 8px 14px; white-space: nowrap;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: #000; cursor: pointer; z-index: 12; transition: background 0.2s;
+    }
+    .hero-track-tab svg { flex-shrink: 0; }
+    .hero-track-tab.open { background: rgba(255,255,255,0.85); }
+
+    /* Frosted overlay across the whole hero when track drawer is open */
+    .hero-track-overlay {
+      position: absolute; inset: 0;
+      background: rgba(10,10,10,0.35); backdrop-filter: blur(14px);
+      display: none; z-index: 9;
+    }
+    .hero-track-overlay.open { display: block; }
+
+    /* Track drawer — centered glass panel over the frosted photo */
+    .hero-track-drawer {
+      position: absolute; top: 50%; left: 12px; right: 12px;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.28); backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.55); border-radius: 16px;
+      padding: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+      display: none; z-index: 10;
+    }
+    .hero-track-drawer.open { display: block; }
+  }
+  @media (min-width: 481px) {
+    .hero-track-tab, .hero-track-drawer, .hero-track-overlay { display: none !important; }
+  }
+
+  /* ── HERO SLIDESHOW ── */
+  .hero-slides { position: absolute; inset: 0; }
+  .hero-slide {
+    position: absolute; inset: 0;
+    opacity: 0; transition: opacity 0.8s ease; pointer-events: none;
+  }
+  .hero-slide.active { opacity: 1; pointer-events: auto; }
+  .hero-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .slide-dots {
+    position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
+    display: none; gap: 7px; z-index: 10;
+  }
+  .slide-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(255,255,255,0.45); border: none; cursor: pointer;
+    transition: background 0.3s, transform 0.3s; padding: 0;
+  }
+  .slide-dot.active { background: #fff; transform: scale(1.3); }
+  .slide-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,0.22); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 10; transition: background 0.2s;
+  }
+  .slide-arrow:hover { background: rgba(255,255,255,0.42); }
+  .slide-arrow.prev { left: 14px; }
+  .slide-arrow.next { right: 14px; }
+  .slide-arrow svg { stroke: #fff; }
+
+  .hero-card {
+    position: absolute; bottom: 24px; left: 20px;
+    transform: none;
+    width: 480px; max-width: calc(100vw - 40px);
+    background: rgba(255,255,255,0.22); backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.55); border-radius: 16px;
+    padding: 16px 20px; box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    display: flex; flex-direction: column; gap: 12px;
+    opacity: 0; transform: translateY(12px);
+    animation: cardUp 0.55s ease 0.1s forwards;
+  }
+  @keyframes cardUp { to { opacity: 1; transform: translateY(0); } }
+
+  .hero-card-text h1 {
+    font-size: clamp(0.95rem, 2.5vw, 1.2rem); font-weight: 800;
+    letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 3px;
+  }
+  .hero-card-text p { font-size: 0.68rem; color: rgba(0,0,0,0.55); line-height: 1.45; max-width: 220px; }
+
+  .hero-shop-btn {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    background: #000; color: #fff;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 9px 15px; border-radius: 100px; text-decoration: none; white-space: nowrap;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .hero-shop-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.22); }
+  .hero-shop-btn svg { transition: transform 0.2s; }
+  .hero-shop-btn:hover svg { transform: translateX(3px); }
+
+  @media (max-width: 520px) { }
+
+  /* ── HERO TABS (welcome / track) ── */
+  .hero-card {
+    flex-direction: column; gap: 12px;
+    width: 480px; max-width: calc(100vw - 40px);
+  }
+
+  /* Tab bar — full width, both pills equal */
+  .hero-tabs {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+    background: rgba(0,0,0,0.06); border-radius: 100px; padding: 3px;
+  }
+  .hero-tab {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 7px 10px; border-radius: 100px; text-align: center;
+    border: none; background: transparent; color: rgba(0,0,0,0.45);
+    cursor: pointer; transition: all 0.18s;
+  }
+  .hero-tab.active { background: #000; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+
+  .hero-pane { width: 100%; }
+
+  /* Welcome pane — row layout */
+  #pane-welcome {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  }
+  .hero-card-text h1 {
+    font-size: clamp(0.92rem, 2.2vw, 1.1rem); font-weight: 800;
+    letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 4px;
+  }
+  .hero-card-text p { font-size: 0.68rem; color: rgba(0,0,0,0.5); line-height: 1.45; max-width: 200px; }
+
+  @media (max-width: 520px) {
+    .hero-card { width: calc(100vw - 40px); }
+    #pane-welcome { flex-direction: column; align-items: flex-start; }
+    .hero-shop-btn { align-self: stretch; justify-content: center; }
+  }
+
+  /* Track pane */
+  .hero-track-inner { width: 100%; }
+  .track-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; color: rgba(0,0,0,0.6); margin-bottom: 8px; }
+  .track-input-row { display: flex; gap: 6px; }
+  .track-input {
+    flex: 1; font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 9px 14px; border-radius: 100px;
+    border: 1.5px solid rgba(0,0,0,0.14);
+    background: rgba(255,255,255,0.6); backdrop-filter: blur(8px);
+    outline: none; transition: border-color 0.15s;
+  }
+  .track-input:focus { border-color: #000; background: rgba(255,255,255,0.8); }
+  .track-input::placeholder { color: rgba(0,0,0,0.22); font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .track-go-btn {
+    width: 38px; height: 38px; border-radius: 50%; background: #000; color: #fff;
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .track-go-btn:hover { transform: scale(1.08); box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+  .track-msg { font-size: 0.64rem; font-weight: 600; margin-top: 7px; min-height: 16px; }
+  .track-msg.ok  { color: #2e7d32; }
+  .track-msg.err { color: #c62828; }
+
+  /* ── MARQUEE TICKER (new — between hero and about) ── */
+  .ticker {
+    background: #000; overflow: hidden;
+    padding: 13px 0; border-top: 1px solid #111; border-bottom: 1px solid #111;
+    position: relative;
+  }
+  .ticker::before, .ticker::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 48px; z-index: 2;
+  }
+  .ticker::before { left: 0; background: linear-gradient(to right, #000, transparent); }
+  .ticker::after  { right: 0; background: linear-gradient(to left, #000, transparent); }
+  .ticker-track {
+    display: inline-flex; white-space: nowrap;
+    animation: marquee 22s linear infinite;
+  }
+  .ticker-track:hover { animation-play-state: paused; }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .ticker-item {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(255,255,255,0.75); padding: 0 24px; flex-shrink: 0;
+  }
+  .ticker-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.25); flex-shrink: 0; }
+  .ticker-item.accent { color: #c8f060; }
+
+  /* ── GLASS BOX base ── */
+  .glass-box {
+    background: rgba(255,255,255,0.5); backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.8); border-radius: 22px;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.07); overflow: hidden;
+  }
+
+  /* ── WHO WE ARE (original positions) ── */
+  .about-section {
+    max-width: 860px; margin: 0 auto; padding: 40px 20px 16px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch;
+  }
+  @media (max-width: 620px) { .about-section { grid-template-columns: 1fr; } }
+
+  .about-card { padding: 28px; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
+  .about-card .label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #bbb; }
+  .about-card h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin: 6px 0 10px; }
+  .about-card p { font-size: 0.78rem; color: #555; line-height: 1.65; }
+  .about-card blockquote {
+    font-size: 0.75rem; font-style: italic; color: #888; line-height: 1.6;
+    border-left: 2px solid #ddd; padding-left: 12px; margin-top: 4px;
+  }
+
+  .stats-card { display: flex; flex-direction: column; justify-content: space-between; }
+  .stat-row { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-num { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin-bottom: 3px; }
+  .stat-desc { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #aaa; }
+
+  /* ── MANIFESTO STRIP (new — after about section) ── */
+  .manifesto-wrap { max-width: 860px; margin: 14px auto 0; padding: 0 20px; }
+  .manifesto {
+    background: rgba(255,255,255,0.5); backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.8); border-radius: 22px;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.07);
+    padding: 32px 36px;
+    display: flex; align-items: center; gap: 28px;
+  }
+  .manifesto-line {
+    width: 3px; flex-shrink: 0; align-self: stretch;
+    background: linear-gradient(to bottom, #c8f060, #000);
+    border-radius: 4px;
+  }
+  .manifesto-text { flex: 1; }
+  .manifesto-text .mf-label {
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #bbb; margin-bottom: 10px;
+  }
+  .manifesto-text p {
+    font-size: clamp(1rem, 2.5vw, 1.35rem);
+    font-weight: 800; letter-spacing: -0.02em; line-height: 1.35; color: #0a0a0a;
+  }
+  .manifesto-text p em { font-style: italic; color: #888; }
+  @media (max-width: 500px) { .manifesto { flex-direction: column; padding: 24px; } .manifesto-line { width: 100%; height: 3px; align-self: auto; } }
+
+  /* ── VALUE CARDS ROW (new — three reasons) ── */
+  .value-wrap { max-width: 860px; margin: 14px auto 0; padding: 0 20px; }
+  .value-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 620px) { .value-grid { grid-template-columns: 1fr; } }
+
+  .value-card {
+    background: rgba(255,255,255,0.5); backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.8); border-radius: 22px;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.07);
+    padding: 22px 20px;
+    display: flex; flex-direction: column; gap: 10px;
+    opacity: 0; transform: translateY(16px);
+    animation: fadeUp 0.45s ease forwards;
+  }
+  .value-card:nth-child(2) { animation-delay: 0.08s; }
+  .value-card:nth-child(3) { animation-delay: 0.16s; }
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+  .value-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: #000; display: flex; align-items: center; justify-content: center;
+  }
+  .value-icon svg { color: #c8f060; }
+  .value-card h4 { font-size: 0.88rem; font-weight: 800; letter-spacing: -0.02em; }
+  .value-card p { font-size: 0.72rem; color: #777; line-height: 1.6; }
+
+  /* ── SOCIAL PROOF BAR (new — before CTA) ── */
+  .social-proof-wrap { max-width: 860px; margin: 14px auto 0; padding: 0 20px; }
+  .social-proof {
+    background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.07);
+    border-radius: 22px; padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .proof-item { display: flex; align-items: center; gap: 8px; }
+  .proof-item svg { opacity: 0.6; }
+  .proof-text { font-size: 0.72rem; font-weight: 600; color: #555; }
+  .proof-divider { width: 1px; height: 20px; background: rgba(0,0,0,0.1); }
+  @media (max-width: 500px) { .proof-divider { display: none; } .social-proof { gap: 10px; } }
+
+  /* ── CTA (original position) ── */
+  .cta-strip { max-width: 860px; margin: 14px auto 48px; padding: 0 20px; }
+  .cta-card {
+    background: #000; border-radius: 22px; padding: 24px 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .cta-card-text .cta-label {
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(255,255,255,0.4); margin-bottom: 4px;
+  }
+  .cta-card-text h3 { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
+  .cta-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: #fff; color: #000;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 12px 22px; border-radius: 100px; text-decoration: none; white-space: nowrap;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(255,255,255,0.2); }
+  .cta-btn svg { transition: transform 0.2s; }
+  .cta-btn:hover svg { transform: translateX(3px); }
+
+  /* ── ADMIN PASSWORD MODAL ── */
+  .pw-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(16px);
+    z-index: 11000; display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .pw-overlay.open { display: flex; }
+  .pw-box {
+    width: 100%; max-width: 340px;
+    background: #0a0a0a; border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 32px 28px; text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    position: relative; overflow: hidden;
+    animation: pwPop 0.25s cubic-bezier(0.22,1,0.36,1) forwards;
+  }
+  @keyframes pwPop { from { opacity:0; transform: scale(0.92) translateY(12px); } to { opacity:1; transform: scale(1) translateY(0); } }
+  .pw-box::before {
+    content:''; position:absolute; top:-60px; left:50%; transform:translateX(-50%);
+    width:200px; height:200px; border-radius:50%;
+    background: radial-gradient(circle, rgba(200,240,96,0.08) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .pw-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 18px;
+  }
+  .pw-icon svg { color: #c8f060; }
+  .pw-title { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; color: #fff; margin-bottom: 6px; }
+  .pw-sub { font-size: 0.68rem; color: rgba(255,255,255,0.3); margin-bottom: 22px; line-height: 1.5; }
+  .pw-input {
+    width: 100%; font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.9rem; font-weight: 700; letter-spacing: 0.15em;
+    padding: 12px 16px; border-radius: 12px;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.06); color: #fff;
+    outline: none; text-align: center; margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+  .pw-input:focus { border-color: rgba(200,240,96,0.4); }
+  .pw-input.shake { animation: shake 0.35s ease; border-color: rgba(220,50,50,0.5); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+  .pw-error { font-size: 0.62rem; color: #e05050; min-height: 16px; margin-bottom: 10px; }
+  .pw-btn {
+    width: 100%; font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 12px; border: none; border-radius: 100px;
+    background: #c8f060; color: #000; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .pw-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(200,240,96,0.25); }
+  .pw-cancel {
+    margin-top: 10px; font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.62rem; color: rgba(255,255,255,0.2); background: none; border: none;
+    cursor: pointer; transition: color 0.15s;
+  }
+  .pw-cancel:hover { color: rgba(255,255,255,0.5); }
+
+  /* PDF download button */
+  .order-pdf-btn {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.58rem; font-weight: 700; padding: 5px 11px; border-radius: 100px;
+    border: 1.5px solid rgba(0,0,0,0.12); background: #fff;
+    cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 5px; color: #333;
+    flex-shrink: 0;
+  }
+  .order-pdf-btn:hover { background: #0a0a0a; color: #c8f060; border-color: #0a0a0a; }
+  .order-pdf-btn svg { flex-shrink: 0; }
+
+  /* ── ADMIN PANEL ── */
+  .admin-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); z-index: 10000; display: none; align-items: flex-end; justify-content: center; }
+  .admin-overlay.open { display: flex; }
+  .admin-sheet { width: 100%; max-width: 720px; background: #fff; border-radius: 24px 24px 0 0; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 -8px 40px rgba(0,0,0,0.15); }
+  .admin-handle { width: 36px; height: 4px; border-radius: 2px; background: #ddd; margin: 12px auto 0; flex-shrink: 0; }
+  .admin-head { padding: 12px 20px 0; flex-shrink: 0; }
+  .admin-head-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .admin-head-title { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #aaa; }
+  .admin-close-btn { font-family: 'Bricolage Grotesque', sans-serif; font-size: 0.68rem; font-weight: 600; padding: 5px 12px; border-radius: 100px; border: 1.5px solid rgba(0,0,0,0.1); background: transparent; cursor: pointer; transition: all 0.15s; }
+  .admin-close-btn:hover { background: #f5f5f5; }
+  .admin-order-count { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 12px; }
+  .admin-order-count span { color: #bbb; font-weight: 400; font-size: 1rem; }
+
+  /* Tabs */
+  .admin-tabs { display: flex; gap: 4px; padding: 0 0 12px; overflow-x: auto; flex-shrink: 0; border-bottom: 1px solid #f0f0f0; }
+  .admin-tabs::-webkit-scrollbar { height: 0; }
+  .admin-tab { font-family: 'Bricolage Grotesque', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 12px; border-radius: 100px; border: 1.5px solid rgba(0,0,0,0.08); background: transparent; cursor: pointer; white-space: nowrap; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+  .admin-tab:hover { border-color: rgba(0,0,0,0.2); background: #f5f5f5; }
+  .admin-tab.active { background: #000; color: #fff; border-color: #000; }
+  .admin-tab .tab-count { font-size: 0.55rem; background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 100px; }
+  .admin-tab:not(.active) .tab-count { background: rgba(0,0,0,0.07); color: #777; }
+
+  /* Section split tabs */
+  .admin-section-tabs {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    margin-bottom: 0; padding-bottom: 0;
+  }
+  .admin-section-tab {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 10px 14px; border-radius: 14px;
+    border: 1.5px solid rgba(0,0,0,0.08); background: #fafafa;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 7px; justify-content: center;
+    color: #999;
+  }
+  .admin-section-tab:hover { background: #f0f0f0; color: #555; }
+  .admin-section-tab.active { background: #000; color: #fff; border-color: #000; }
+  .admin-section-tab.active svg { stroke: #c8f060; }
+  .section-badge {
+    font-size: 0.55rem; font-weight: 800; padding: 2px 6px; border-radius: 100px;
+    background: rgba(255,255,255,0.18); min-width: 18px; text-align: center;
+  }
+  .admin-section-tab:not(.active) .section-badge { background: rgba(0,0,0,0.08); color: #555; }
+
+  /* Order list */
+  .admin-list { flex: 1; overflow-y: auto; padding: 12px 20px 40px; }
+  .admin-empty { text-align: center; padding: 40px 20px; font-size: 0.78rem; color: #aaa; }
+
+  /* Order card */
+  .order-card { border: 1.5px solid rgba(0,0,0,0.07); border-radius: 18px; margin-bottom: 10px; overflow: hidden; transition: border-color 0.15s; }
+  .order-card:hover { border-color: rgba(0,0,0,0.15); }
+  .order-card.is-receipt { border-color: rgba(0,0,0,0.06); background: #fafafa; }
+  .order-card.is-receipt .order-card-header { background: #fafafa; }
+
+  .order-card-header {
+    padding: 14px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px;
+    transition: background 0.12s;
+  }
+  .order-card-header:hover { background: rgba(0,0,0,0.015); }
+  .order-header-left { flex: 1; min-width: 0; }
+  .order-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+  .order-ref-label { font-family: monospace; font-size: 0.72rem; font-weight: 700; color: #222; letter-spacing: 0.04em; }
+  .order-time { font-size: 0.6rem; color: #bbb; }
+  .order-name { font-size: 0.82rem; font-weight: 700; margin-bottom: 2px; }
+  .order-meta { font-size: 0.65rem; color: #888; }
+  .order-header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+  .order-total { font-size: 0.8rem; font-weight: 800; }
+  .order-status-badge { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 100px; background: rgba(0,0,0,0.06); color: #555; }
+  .order-status-badge.s-ready      { background: #e8f5e9; color: #2e7d32; }
+  .order-status-badge.s-collected  { background: #e3f2fd; color: #1565c0; }
+  .order-status-badge.s-cancelled  { background: #fce4ec; color: #c62828; }
+  .order-status-badge.s-dispatched { background: #fff3e0; color: #e65100; }
+  .order-status-badge.s-packed     { background: #f3e5f5; color: #6a1b9a; }
+  .order-expand-icon { font-size: 0.6rem; color: #ccc; transition: transform 0.2s; flex-shrink: 0; }
+  .order-card.expanded .order-expand-icon { transform: rotate(180deg); }
+
+  /* Receipt body (hidden by default) */
+  .order-receipt { display: none; border-top: 1px solid rgba(0,0,0,0.06); }
+  .order-card.expanded .order-receipt { display: block; }
+
+  .receipt-inner { padding: 14px 16px; background: #fafafa; }
+  .receipt-ref-bar {
+    background: #0a0a0a; border-radius: 10px; padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .receipt-ref-text { font-family: monospace; font-size: 0.78rem; font-weight: 700; color: #c8f060; letter-spacing: 0.06em; }
+  .receipt-ref-label { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+
+  .receipt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  @media (max-width: 480px) { .receipt-grid { grid-template-columns: 1fr; } }
+  .receipt-field { background: #fff; border: 1px solid rgba(0,0,0,0.07); border-radius: 9px; padding: 9px 12px; }
+  .receipt-field-label { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #bbb; margin-bottom: 2px; }
+  .receipt-field-value { font-size: 0.74rem; font-weight: 700; color: #222; }
+
+  .receipt-items { background: #fff; border: 1px solid rgba(0,0,0,0.07); border-radius: 9px; overflow: hidden; margin-bottom: 12px; }
+  .receipt-item-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(0,0,0,0.04); font-size: 0.72rem; }
+  .receipt-item-row:last-child { border-bottom: none; }
+  .receipt-item-name { color: #333; font-weight: 600; }
+  .receipt-item-price { font-weight: 800; }
+  .receipt-total-row { display: flex; justify-content: space-between; padding: 10px 12px; background: #f0f0f0; font-size: 0.74rem; font-weight: 800; border-top: 1px solid rgba(0,0,0,0.08); }
+
+  /* Status buttons */
+  .order-status-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 16px 14px; background: #fafafa; border-top: 1px solid rgba(0,0,0,0.04); }
+  .order-status-btn { font-family: 'Bricolage Grotesque', sans-serif; font-size: 0.58rem; font-weight: 700; padding: 4px 9px; border-radius: 100px; border: 1.5px solid rgba(0,0,0,0.1); background: #fff; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; text-transform: uppercase; }
+  .order-status-btn:hover { border-color: #000; }
+  .order-status-btn.active-status { background: #000; color: #fff; border-color: #000; }
+  .order-status-btn.status-cancelled.active-status { background: #e04040; border-color: #e04040; }
+  .order-status-btn.status-ready.active-status    { background: #2e7d32; border-color: #2e7d32; }
+  .order-status-btn.status-collected.active-status{ background: #1565c0; border-color: #1565c0; }
+</style>
+</head>
+<body>
+
+<!-- NAV — original -->
+<div class="nav-bar">
+  <div class="brand" id="brand-trigger">B.forge</div>
+  <div class="nav-icons">
+    <a href="index.html"><img alt="Home" src="icons/home.svg"/></a>
+    <a href="tshirts.html"><img alt="T-Shirts" src="icons/shopping-bag.svg"/></a>
+    <a href="gallery.html"><img alt="Gallery" src="icons/image.svg"/></a>
+    <a href="about.html"><img alt="About" src="icons/info.svg"/></a>
+    <a href="cart.html"><img alt="Cart" src="icons/shopping-cart.svg"/></a>
+    <a href="socials.html"><img alt="Socials" src="icons/share.svg"/></a>
+  </div>
+</div>
+
+<!-- HERO — Supabase-driven -->
+<section class="hero">
+  <div class="hero-slides" id="heroSlides">
+    <!-- Placeholder shown until Supabase banners load -->
+    <div class="hero-slide active" id="hero-placeholder">
+      <div style="width:100%;height:100%;background:#0a0a0a;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;">
+        <div style="font-size:clamp(2rem,8vw,4rem);font-weight:800;letter-spacing:-0.04em;color:#fff;">B<span style="color:#c8f060;">.</span>forge</div>
+        <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.3);">Season 01 · South Africa</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prev / Next arrows -->
+  <button class="slide-arrow prev" id="slidePrev" aria-label="Previous">
+    <svg width="14" height="14" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button class="slide-arrow next" id="slideNext" aria-label="Next">
+    <svg width="14" height="14" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+
+  <!-- Dot indicators -->
+  <div class="slide-dots" id="slideDots"></div>
+  <div class="hero-card" id="hero-card">
+    <!-- Tab switcher -->
+    <div class="hero-tabs" id="hero-tabs">
+      <button class="hero-tab active" onclick="switchHeroTab(this,'welcome')">Welcome</button>
+      <button class="hero-tab" onclick="switchHeroTab(this,'track')">Track Order</button>
+    </div>
+
+    <!-- Welcome pane -->
+    <div class="hero-pane" id="pane-welcome">
+      <div class="hero-card-text">
+        <h1 id="bc-hero-title">Welcome to Bokforge</h1>
+        <p id="bc-hero-tagline">The fusion of culture, youth, and fashion. More than a brand — it's a statement.</p>
+      </div>
+      <a class="hero-shop-btn" href="tshirts.html">
+        Shop Now
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+
+    <!-- Track pane -->
+    <div class="hero-pane" id="pane-track" style="display:none;">
+      <div class="hero-track-inner">
+        <div class="track-label">Enter your order ref to see status</div>
+        <div class="track-input-row">
+          <input type="text" id="track-input" placeholder="BKF-XXXXXX" class="track-input" maxlength="12" autocomplete="off" spellcheck="false"/>
+          <button class="track-go-btn" onclick="doTrack()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+        <div id="track-msg" class="track-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile-only: track order tab + frosted overlay drawer -->
+  <div class="hero-track-tab" id="mobile-track-tab" onclick="toggleMobileTrack()">
+    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span id="mobile-track-tab-label">Track Order</span>
+  </div>
+  <div class="hero-track-overlay" id="mobile-track-overlay" onclick="toggleMobileTrack()"></div>
+  <div class="hero-track-drawer" id="mobile-track-drawer">
+    <div class="track-label">Enter your order ref to see status</div>
+    <div class="track-input-row">
+      <input type="text" id="mobile-track-input" placeholder="BKF-XXXXXX" class="track-input" maxlength="12" autocomplete="off" spellcheck="false"/>
+      <button class="track-go-btn" onclick="doMobileTrack()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+    <div id="mobile-track-msg" class="track-msg"></div>
+  </div>
+</section>
+
+<!-- NEW: MARQUEE TICKER -->
+<div class="ticker">
+  <div class="ticker-track" id="ticker-track"></div>
+</div>
+
+<!-- WHO WE ARE — original positions -->
+<div class="about-section">
+  <div class="glass-box about-card">
+    <div>
+      <div class="label">Who We Are</div>
+      <h2 id="bc-who-heading">Youth.<br/>Culture.<br/>Fashion.</h2>
+      <p id="bc-who-body">Bokforge is a youth-driven clothing line rooted in South African culture and pride. We empower local creativity and bring street fashion alive through authenticity, originality, and purpose.</p>
+    </div>
+    <blockquote id="bc-quote">"Even though we are in tough situations, one thing remains true — we run with it."</blockquote>
+  </div>
+  <div class="glass-box stats-card">
+    <div class="stat-row">
+      <div class="stat-num" id="bc-stat1-num">S01</div>
+      <div class="stat-desc" id="bc-stat1-label">Season One — 2025</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-num" id="bc-stat2-num">3</div>
+      <div class="stat-desc" id="bc-stat2-label">Pieces in Collection</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-num" id="bc-stat3-num">ZA</div>
+      <div class="stat-desc" id="bc-stat3-label">South African Made</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-num" id="bc-stat4-num">100%</div>
+      <div class="stat-desc" id="bc-stat4-label">Authentic &amp; Original</div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW: MANIFESTO STRIP -->
+<div class="manifesto-wrap">
+  <div class="manifesto">
+    <div class="manifesto-line"></div>
+    <div class="manifesto-text">
+      <div class="mf-label">The Bokforge Manifesto</div>
+      <p id="bc-manifesto">We don't follow trends. We wear our stories, carry our culture, and move with purpose. <em>This is what it looks like when South Africa runs with it.</em></p>
+    </div>
+  </div>
+</div>
+
+<!-- NEW: THREE VALUE CARDS -->
+<div class="value-wrap">
+  <div class="value-grid">
+
+    <div class="value-card">
+      <div class="value-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h4 id="bc-val1-title">Built to Last</h4>
+      <p id="bc-val1-body">Every piece is crafted with intention. Quality stitching, premium fabric, made to move with you every day.</p>
+    </div>
+
+    <div class="value-card">
+      <div class="value-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </div>
+      <h4 id="bc-val2-title">Rooted in Culture</h4>
+      <p id="bc-val2-body">Bokforge is South African at its core — born from the streets, the youth, and the pride of a generation that refuses to be silent.</p>
+    </div>
+
+    <div class="value-card">
+      <div class="value-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      <h4 id="bc-val3-title">Limited Drops</h4>
+      <p id="bc-val3-body">No mass production. Each season is small, intentional, and exclusive. Own a piece that not everyone can have.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- NEW: SOCIAL PROOF BAR -->
+<div class="social-proof-wrap">
+  <div class="social-proof">
+    <div class="proof-item">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      <span class="proof-text">Loved by the youth</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span class="proof-text">Shipped across South Africa</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      <span class="proof-text">Fast courier delivery</span>
+    </div>
+    <div class="proof-divider"></div>
+    <div class="proof-item">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="proof-text">Secure Yoco payments</span>
+    </div>
+  </div>
+</div>
+
+<!-- CTA — original position -->
+<div class="cta-strip">
+  <div class="cta-card">
+    <div class="cta-card-text">
+      <div class="cta-label" id="bc-cta-label">Season 01 — Available Now</div>
+      <h3 id="bc-cta-heading">Ready to wear your story?</h3>
+    </div>
+    <a href="tshirts.html" class="cta-btn">
+      Browse Collection
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</div>
+
+<script>
+  /* ── Slideshow init moved to Supabase banner loader below ── */
+</script>
+
+
+<script>
+  const msgs = [
+    { text: 'South African Made', accent: false },
+    { text: 'Season 01 — Now Live', accent: true },
+    { text: 'Limited Pieces Only', accent: false },
+    { text: 'Youth. Culture. Fashion.', accent: false },
+    { text: 'Free Delivery on Orders Over R500', accent: true },
+    { text: 'Wear Your Story', accent: false },
+    { text: 'Run With It — Bokforge', accent: false },
+    { text: 'New Drop Coming Soon', accent: true },
+  ];
+
+  const track = document.getElementById('ticker-track');
+  // Double for seamless loop
+  [...msgs, ...msgs].forEach(m => {
+    const span = document.createElement('span');
+    span.className = 'ticker-item' + (m.accent ? ' accent' : '');
+    span.innerHTML = `${m.text}<span class="ticker-dot"></span>`;
+    track.appendChild(span);
+  });
+</script>
+
+<!-- ADMIN PASSWORD MODAL -->
+<div class="pw-overlay" id="pw-overlay">
+  <div class="pw-box">
+    <div class="pw-icon">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <div class="pw-title">Admin Access</div>
+    <div class="pw-sub">Enter your admin password to access<br/>the Bokforge order management panel.</div>
+    <input class="pw-input" id="pw-input" type="password" placeholder="••••••••" autocomplete="off" maxlength="32"/>
+    <div class="pw-error" id="pw-error"></div>
+    <button class="pw-btn" onclick="submitPassword()">Unlock</button>
+    <button class="pw-cancel" onclick="cancelPassword()">Cancel</button>
+  </div>
+</div>
+
+<!-- ADMIN PANEL OVERLAY -->
+<div class="admin-overlay" id="admin-overlay">
+  <div class="admin-sheet">
+    <div class="admin-handle"></div>
+    <div class="admin-head">
+      <div class="admin-head-top">
+        <div class="admin-head-title">Bokforge · Order Management</div>
+        <button class="admin-close-btn" onclick="closeAdmin()">Close</button>
+      </div>
+      <div class="admin-order-count" id="admin-order-count">0 <span>orders</span></div>
+
+      <!-- Main section split: Active vs Receipts -->
+      <div class="admin-section-tabs">
+        <button class="admin-section-tab active" id="sec-tab-active" onclick="switchAdminSection('active')">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Active Orders
+          <span class="section-badge" id="active-badge">0</span>
+        </button>
+        <button class="admin-section-tab" id="sec-tab-receipts" onclick="switchAdminSection('receipts')">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Receipts
+          <span class="section-badge" id="receipts-badge">0</span>
+        </button>
+      </div>
+
+      <!-- Status filter tabs (only shown for active section) -->
+      <div class="admin-tabs" id="admin-tabs" style="padding-top:10px;"></div>
+    </div>
+    <div class="admin-list" id="admin-list"></div>
+  </div>
+</div>
+
+<script>
+  /* ── Admin panel ── */
+  const STATUS_TABS = [
+    { key: 'all',        label: 'All' },
+    { key: 'processing', label: 'Processing' },
+    { key: 'packed',     label: 'Packed' },
+    { key: 'dispatched', label: 'Dispatched' },
+    { key: 'ready',      label: 'Ready' },
+    { key: 'cancelled',  label: 'Cancelled' },
+  ];
+
+  const STATUS_ACTIONS = [
+    { key: 'processing', label: 'Processing' },
+    { key: 'packed',     label: 'Packed' },
+    { key: 'dispatched', label: 'Dispatched' },
+    { key: 'ready',      label: 'Ready to Collect' },
+    { key: 'collected',  label: 'Collected ✓' },
+    { key: 'cancelled',  label: 'Cancel' },
+  ];
+
+  let adminTab = 'all';
+  let adminSection = 'active'; // 'active' | 'receipts'
+
+  // Orders come from Supabase — cached after load
+  let _ordersCache = null;
+
+  async function getOrders() {
+    if (_ordersCache) return _ordersCache;
+    try {
+      const rows = await db.getOrders();
+      // Normalize field names (Supabase uses snake_case)
+      _ordersCache = (rows || []).map(normalizeOrder);
+      return _ordersCache;
+    } catch(e) { return []; }
+  }
+
+  function normalizeOrder(o) {
+    return {
+      ref:        o.ref,
+      status:     o.status,
+      cart:       o.cart || [],
+      grandTotal: o.grand_total || o.grandTotal || 0,
+      customer:   o.customer || {},
+      delivery:   o.delivery || {},
+      placedAt:   o.placed_at || o.placedAt || new Date().toISOString(),
+    };
+  }
+
+  function timeAgo(iso) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1)  return 'just now';
+    if (m < 60) return m + 'm ago';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.floor(h / 24) + 'd ago';
+  }
+
+  async function switchAdminSection(sec) {
+    adminSection = sec;
+    adminTab = 'all';
+    // Toggle section tab UI
+    document.getElementById('sec-tab-active').classList.toggle('active', sec === 'active');
+    document.getElementById('sec-tab-receipts').classList.toggle('active', sec === 'receipts');
+    // Hide/show status filter tabs (not needed for receipts)
+    document.getElementById('admin-tabs').style.display = sec === 'active' ? 'flex' : 'none';
+    renderAdmin();
+  }
+
+  async function renderAdmin() {
+    const allOrders = await getOrders();
+    const tabsEl   = document.getElementById('admin-tabs');
+    const listEl   = document.getElementById('admin-list');
+    const countEl  = document.getElementById('admin-order-count');
+
+    // Split into active vs receipts (collected/cancelled go to receipts)
+    const activeOrders   = allOrders.filter(o => o.status !== 'collected' && o.status !== 'cancelled');
+    const receiptOrders  = allOrders.filter(o => o.status === 'collected' || o.status === 'cancelled');
+
+    document.getElementById('active-badge').textContent   = activeOrders.length;
+    document.getElementById('receipts-badge').textContent = receiptOrders.length;
+
+    const workingSet = adminSection === 'receipts' ? receiptOrders : activeOrders;
+    countEl.innerHTML = `${workingSet.length} <span>${adminSection === 'receipts' ? 'receipts' : 'active order' + (workingSet.length !== 1 ? 's' : '')}</span>`;
+
+    if (adminSection === 'active') {
+      // Build status filter tabs for active orders only
+      tabsEl.innerHTML = STATUS_TABS.map(t => {
+        const count = t.key === 'all' ? activeOrders.length : activeOrders.filter(o => o.status === t.key).length;
+        return `<button class="admin-tab ${adminTab === t.key ? 'active' : ''}" onclick="setAdminTab('${t.key}')">
+          ${t.label} <span class="tab-count">${count}</span>
+        </button>`;
+      }).join('');
+    }
+
+    const visible = adminSection === 'receipts'
+      ? receiptOrders
+      : (adminTab === 'all' ? activeOrders : activeOrders.filter(o => o.status === adminTab));
+
+    if (visible.length === 0) {
+      listEl.innerHTML = adminSection === 'receipts'
+        ? `<div class="admin-empty">No completed orders yet.<br><span style="font-size:0.65rem;color:#ccc;">Orders move here once marked as Collected or Cancelled.</span></div>`
+        : `<div class="admin-empty">No orders here yet.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = visible.map(order => {
+      const point    = order.delivery?.point;
+      const dtype    = (order.delivery?.type || '').toUpperCase();
+      const statusBadgeClass = `s-${order.status}`;
+      const statusLabel = STATUS_ACTIONS.find(a => a.key === order.status)?.label || order.status;
+
+      const statusBtns = adminSection === 'active'
+        ? STATUS_ACTIONS.map(a =>
+            `<button class="order-status-btn status-${a.key} ${order.status === a.key ? 'active-status' : ''}"
+              onclick="updateOrderStatus('${order.ref}', '${a.key}')">${a.label}</button>`
+          ).join('')
+        : `<button class="order-status-btn" onclick="updateOrderStatus('${order.ref}', 'processing')" style="color:#555;border-color:rgba(0,0,0,0.15);">↩ Restore to Active</button>`;
+
+      const itemRows = (order.cart || []).map(i =>
+        `<div class="receipt-item-row">
+          <span class="receipt-item-name">${i.name} <span style="font-weight:400;color:#aaa;">${i.size} ×${i.qty}</span></span>
+          <span class="receipt-item-price">R${(i.price * i.qty).toFixed(2)}</span>
+        </div>`
+      ).join('');
+
+      // Receipt section gets a slightly different look
+      const isReceipt = adminSection === 'receipts';
+
+      return `
+        <div class="order-card${isReceipt ? ' is-receipt' : ''}" id="card-${order.ref}">
+          <div class="order-card-header" onclick="toggleOrderCard('${order.ref}')">
+            <div class="order-header-left">
+              <div class="order-card-top">
+                <span class="order-ref-label">${order.ref}</span>
+                <span class="order-time">${timeAgo(order.placedAt)}</span>
+              </div>
+              <div class="order-name">${order.customer?.name || '—'}</div>
+              <div class="order-meta">${order.customer?.email || ''}</div>
+            </div>
+            <div class="order-header-right">
+              <span class="order-total">R${Number(order.grandTotal).toFixed(2)}</span>
+              <span class="order-status-badge ${statusBadgeClass}">${isReceipt ? (order.status === 'collected' ? 'Collected ✓' : 'Cancelled') : statusLabel}</span>
+            </div>
+            <div class="order-expand-icon">▼</div>
+          </div>
+
+          <div class="order-receipt">
+            <div class="receipt-inner">
+              <div class="receipt-ref-bar">
+                <div>
+                  <div class="receipt-ref-label">Order Reference</div>
+                  <div class="receipt-ref-text">${order.ref}</div>
+                </div>
+                <div style="font-size:0.6rem;color:rgba(255,255,255,0.3);text-align:right;">
+                  ${new Date(order.placedAt).toLocaleDateString('en-ZA', {day:'numeric',month:'short',year:'numeric'})}
+                </div>
+              </div>
+
+              <div class="receipt-grid">
+                <div class="receipt-field">
+                  <div class="receipt-field-label">Customer</div>
+                  <div class="receipt-field-value">${order.customer?.name || '—'}</div>
+                </div>
+                <div class="receipt-field">
+                  <div class="receipt-field-label">Phone</div>
+                  <div class="receipt-field-value">${order.customer?.phone || '—'}</div>
+                </div>
+                <div class="receipt-field" style="grid-column:1/-1;">
+                  <div class="receipt-field-label">Email</div>
+                  <div class="receipt-field-value">${order.customer?.email || '—'}</div>
+                </div>
+                ${point ? `
+                <div class="receipt-field" style="grid-column:1/-1;">
+                  <div class="receipt-field-label">${dtype} Collection Point</div>
+                  <div class="receipt-field-value">${point.name}</div>
+                  <div style="font-size:0.62rem;color:#888;margin-top:2px;">${point.address || ''}</div>
+                </div>` : ''}
+              </div>
+
+              ${order.cart && order.cart.length ? `
+              <div class="receipt-items">
+                ${itemRows}
+                <div class="receipt-total-row">
+                  <span>Total Paid</span>
+                  <span>R${Number(order.grandTotal).toFixed(2)}</span>
+                </div>
+              </div>` : ''}
+            </div>
+            <div class="order-status-row">
+              <button class="order-pdf-btn" onclick="downloadOrderPDF('${order.ref}')">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                PDF Receipt
+              </button>
+              ${statusBtns}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function toggleOrderCard(ref) {
+    const card = document.getElementById('card-' + ref);
+    if (card) card.classList.toggle('expanded');
+  }
+
+  function setAdminTab(tab) {
+    adminTab = tab;
+    renderAdmin();
+  }
+
+  async function updateOrderStatus(ref, status) {
+    try {
+      await db.updateOrderStatus(ref, status);
+      _ordersCache = null; // invalidate cache
+    } catch(e) { alert('Failed to update order status. Please try again.'); return; }
+
+    // Auto-switch to receipts section when an order is collected or cancelled
+    if (status === 'collected' || status === 'cancelled') {
+      adminSection = 'receipts';
+      adminTab = 'all';
+      document.getElementById('sec-tab-active').classList.remove('active');
+      document.getElementById('sec-tab-receipts').classList.add('active');
+      document.getElementById('admin-tabs').style.display = 'none';
+    }
+
+    renderAdmin();
+  }
+
+  async function openAdmin() {
+    _ordersCache = null;
+    await renderAdmin();
+    document.getElementById('admin-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeAdmin() {
+    document.getElementById('admin-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // ── Password protection ──
+  const ADMIN_PASSWORD = 'bokforge2025'; // change this to your real password
+  let adminUnlocked = false;
+
+  function requestAdminOpen() {
+    if (adminUnlocked) { openAdmin(); return; }
+    document.getElementById('pw-overlay').classList.add('open');
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-error').textContent = '';
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('pw-input').focus(), 120);
+  }
+
+  function submitPassword() {
+    const val = document.getElementById('pw-input').value;
+    if (val === ADMIN_PASSWORD) {
+      adminUnlocked = true;
+      document.getElementById('pw-overlay').classList.remove('open');
+      openAdmin();
+    } else {
+      const inp = document.getElementById('pw-input');
+      document.getElementById('pw-error').textContent = 'Incorrect password. Try again.';
+      inp.classList.add('shake');
+      inp.value = '';
+      setTimeout(() => inp.classList.remove('shake'), 400);
+    }
+  }
+
+  function cancelPassword() {
+    document.getElementById('pw-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // Allow Enter in password field
+  document.getElementById('pw-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitPassword();
+  });
+
+  // Close on backdrop click
+  document.getElementById('admin-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('admin-overlay')) closeAdmin();
+  });
+
+  // 5 rapid clicks on B.forge brand text → redirect to admin.html
+  let tapCount = 0, tapTimer = null;
+  document.getElementById('brand-trigger').addEventListener('click', () => {
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapCount = 0; }, 1500);
+    if (tapCount >= 5) { tapCount = 0; window.location.href = 'bkf-m9k3-panel.html'; }
+  });
+
+  // Auto-open if redirected from success page with #admin hash
+  if (window.location.hash === '#admin') {
+    window.history.replaceState(null, '', window.location.pathname);
+    setTimeout(requestAdminOpen, 300);
+  }
+
+  /* ══════════════════════════════════════════════════
+     BRAND CONTENT — Admin tab + page loader
+  ══════════════════════════════════════════════════ */
+
+  // Default brand content — fallback if nothing in Supabase yet
+  const BRAND_DEFAULTS = {
+    heroTitle:    'Welcome to Bokforge',
+    heroTagline:  "The fusion of culture, youth, and fashion. More than a brand — it's a statement.",
+    whoHeading:   'Youth.\nCulture.\nFashion.',
+    whoBody:      'Bokforge is a youth-driven clothing line rooted in South African culture and pride. We empower local creativity and bring street fashion alive through authenticity, originality, and purpose.',
+    quote:        '"Even though we are in tough situations, one thing remains true — we run with it."',
+    manifesto:    "We don't follow trends. We wear our stories, carry our culture, and move with purpose. This is what it looks like when South Africa runs with it.",
+    stat1Num:     'S01',  stat1Label: 'Season One — 2025',
+    stat2Num:     '3',    stat2Label: 'Pieces in Collection',
+    stat3Num:     'ZA',   stat3Label: 'South African Made',
+    stat4Num:     '100%', stat4Label: 'Authentic & Original',
+    val1Title:    'Built to Last',
+    val1Body:     'Every piece is crafted with intention. Quality stitching, premium fabric, made to move with you every day.',
+    val2Title:    'Rooted in Culture',
+    val2Body:     'Bokforge is South African at its core — born from the streets, the youth, and the pride of a generation that refuses to be silent.',
+    val3Title:    'Limited Drops',
+    val3Body:     'No mass production. Each season is small, intentional, and exclusive. Own a piece that not everyone can have.',
+    ctaLabel:     'Season 01 — Available Now',
+    ctaHeading:   'Ready to wear your story?',
+  };
+
+  // Apply brand content to the page DOM
+  function applyBrandContent(bc) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; };
+    const setHTML = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.innerHTML = val; };
+    set('bc-hero-title',   bc.heroTitle);
+    set('bc-hero-tagline', bc.heroTagline);
+    setHTML('bc-who-heading', (bc.whoHeading || '').replace(/\n/g, '<br/>'));
+    set('bc-who-body',     bc.whoBody);
+    set('bc-quote',        bc.quote);
+    set('bc-manifesto',    bc.manifesto);
+    set('bc-stat1-num',    bc.stat1Num);   set('bc-stat1-label', bc.stat1Label);
+    set('bc-stat2-num',    bc.stat2Num);   set('bc-stat2-label', bc.stat2Label);
+    set('bc-stat3-num',    bc.stat3Num);   set('bc-stat3-label', bc.stat3Label);
+    set('bc-stat4-num',    bc.stat4Num);   set('bc-stat4-label', bc.stat4Label);
+    set('bc-val1-title',   bc.val1Title);  set('bc-val1-body',   bc.val1Body);
+    set('bc-val2-title',   bc.val2Title);  set('bc-val2-body',   bc.val2Body);
+    set('bc-val3-title',   bc.val3Title);  set('bc-val3-body',   bc.val3Body);
+    set('bc-cta-label',    bc.ctaLabel);
+    set('bc-cta-heading',  bc.ctaHeading);
+  }
+
+  // Load brand content from Supabase and apply to page on load
+  (async function initBrandContent() {
+    try {
+      const saved = await db.getSetting('brand_content');
+      const bc = saved ? { ...BRAND_DEFAULTS, ...saved } : BRAND_DEFAULTS;
+      applyBrandContent(bc);
+    } catch(e) { /* silent — defaults stay */ }
+  })();
+
+
+  // ── PDF Receipt Generator ──
+  async function downloadOrderPDF(ref) {
+    const orders = await getOrders();
+    const order = orders.find(o => o.ref === ref);
+    if (!order) return;
+
+    const point   = order.delivery?.point;
+    const dtype   = (order.delivery?.type || '').toUpperCase();
+    const date    = new Date(order.placedAt).toLocaleDateString('en-ZA', { day:'numeric', month:'long', year:'numeric' });
+    const status  = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : '—';
+
+    const itemRows = (order.cart || []).map(i =>
+      `<tr>
+        <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">${i.name}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:center;">${i.size}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:center;">${i.qty}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;font-weight:700;">R${(i.price * i.qty).toFixed(2)}</td>
+      </tr>`
+    ).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Bokforge Receipt — ${order.ref}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Bricolage Grotesque', sans-serif; background: #f2f1ee; color: #111; }
+
+  /* Watermark */
+  body::before {
+    content: 'BOKFORGE';
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font-size: 96px; font-weight: 800; letter-spacing: -0.04em;
+    color: rgba(0,0,0,0.04); white-space: nowrap; pointer-events: none;
+    z-index: 0;
+  }
+
+  .page { max-width: 680px; margin: 0 auto; padding: 0 0 48px; position: relative; z-index: 1; }
+
+  /* ── Full-bleed dark header ── */
+  .receipt-header {
+    background: #0a0a0a;
+    padding: 28px 40px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 32px;
+  }
+  .brand-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .brand-logo {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.04em; color: #fff;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .brand-logo .accent { color: #c8f060; }
+  .brand-sub { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.25); }
+  .header-right { text-align: right; }
+  .receipt-label { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 4px; }
+  .receipt-date { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
+
+  /* Lime accent strip */
+  .accent-strip {
+    height: 4px;
+    background: linear-gradient(to right, #c8f060, #a0d020);
+    margin-bottom: 28px;
+  }
+
+  .body-pad { padding: 0 40px; }
+
+  /* Ref bar */
+  .ref-bar {
+    background: #0a0a0a; border-radius: 16px;
+    padding: 18px 24px; margin-bottom: 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    position: relative; overflow: hidden;
+  }
+  .ref-bar::after {
+    content: ''; position: absolute; right: -20px; top: -20px;
+    width: 100px; height: 100px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(200,240,96,0.08) 0%, transparent 70%);
+  }
+  .ref-label { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 5px; }
+  .ref-number { font-family: 'Courier New', monospace; font-size: 20px; font-weight: 700; color: #c8f060; letter-spacing: 0.06em; }
+  .status-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 6px 14px; border-radius: 100px;
+    background: rgba(200,240,96,0.12); color: #c8f060; border: 1px solid rgba(200,240,96,0.25);
+  }
+
+  /* Section label */
+  .section-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #bbb; margin-bottom: 10px; }
+
+  /* Customer grid */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .field {
+    background: rgba(255,255,255,0.7);
+    border: 1.5px solid rgba(255,255,255,0.9);
+    border-radius: 12px; padding: 12px 16px;
+    backdrop-filter: blur(8px);
+  }
+  .field-label { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #bbb; margin-bottom: 4px; }
+  .field-value { font-size: 13px; font-weight: 700; color: #111; }
+  .field.full { grid-column: 1/-1; }
+
+  /* Items section */
+  .items-wrap {
+    background: rgba(255,255,255,0.7);
+    border: 1.5px solid rgba(255,255,255,0.9);
+    border-radius: 16px; overflow: hidden; margin-bottom: 10px;
+  }
+  .items-head-row {
+    display: grid; grid-template-columns: 1fr 80px 50px 80px;
+    padding: 10px 18px; border-bottom: 1px solid rgba(0,0,0,0.06);
+    background: rgba(0,0,0,0.03);
+  }
+  .items-head-row span { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #bbb; }
+  .items-head-row span:nth-child(2), .items-head-row span:nth-child(3) { text-align: center; }
+  .items-head-row span:last-child { text-align: right; }
+  .item-row { display: grid; grid-template-columns: 1fr 80px 50px 80px; padding: 11px 18px; border-bottom: 1px solid rgba(0,0,0,0.04); align-items: center; }
+  .item-row:last-child { border-bottom: none; }
+  .item-name { font-size: 13px; font-weight: 600; color: #222; }
+  .item-center { font-size: 12px; font-weight: 600; color: #666; text-align: center; }
+  .item-price { font-size: 13px; font-weight: 800; color: #111; text-align: right; }
+
+  /* Total bar */
+  .total-bar {
+    background: #0a0a0a; border-radius: 16px;
+    padding: 16px 22px; margin-bottom: 28px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .total-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+  .total-amount { font-size: 22px; font-weight: 800; color: #c8f060; letter-spacing: -0.02em; }
+
+  /* WhatsApp CTA */
+  .whatsapp-bar {
+    background: rgba(255,255,255,0.7);
+    border: 1.5px solid rgba(255,255,255,0.9);
+    border-radius: 16px; padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 28px;
+  }
+  .wa-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: #25D366; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .wa-icon svg { fill: #fff; }
+  .wa-text-wrap { flex: 1; }
+  .wa-title { font-size: 12px; font-weight: 800; color: #111; margin-bottom: 2px; }
+  .wa-sub { font-size: 10px; color: #888; line-height: 1.5; }
+
+  /* Footer */
+  .receipt-footer {
+    padding: 0 40px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid rgba(0,0,0,0.08); padding-top: 20px;
+  }
+  .footer-left { font-size: 10px; font-weight: 700; color: #bbb; letter-spacing: 0.06em; }
+  .footer-right { font-size: 10px; color: #ccc; font-style: italic; }
+
+  @media print {
+    body { background: #f2f1ee; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Dark header -->
+  <div class="receipt-header">
+    <div class="brand-wrap">
+      <div class="brand-logo">B<span class="accent">.</span>forge</div>
+      <div class="brand-sub">Bokforge Clothing · South Africa</div>
+    </div>
+    <div class="header-right">
+      <div class="receipt-label">Order Receipt</div>
+      <div class="receipt-date">${date}</div>
+    </div>
+  </div>
+
+  <!-- Lime accent line -->
+  <div class="accent-strip"></div>
+
+  <div class="body-pad">
+
+    <!-- Ref + status -->
+    <div class="ref-bar">
+      <div>
+        <div class="ref-label">Order Reference</div>
+        <div class="ref-number">${order.ref}</div>
+      </div>
+      <div class="status-badge">${status}</div>
+    </div>
+
+    <!-- Customer details -->
+    <div class="section-label">Customer Details</div>
+    <div class="two-col">
+      <div class="field">
+        <div class="field-label">Name</div>
+        <div class="field-value">${order.customer?.name || '—'}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Phone</div>
+        <div class="field-value">${order.customer?.phone || '—'}</div>
+      </div>
+      <div class="field full">
+        <div class="field-label">Email Address</div>
+        <div class="field-value">${order.customer?.email || '—'}</div>
+      </div>
+      ${point ? `
+      <div class="field full">
+        <div class="field-label">${dtype} Collection Point</div>
+        <div class="field-value">${point.name}</div>
+        <div style="font-size:11px;color:#888;margin-top:3px;">${point.address || ''}</div>
+      </div>` : ''}
+    </div>
+
+    <!-- Items -->
+    <div class="section-label">Order Items</div>
+    <div class="items-wrap">
+      <div class="items-head-row">
+        <span>Item</span><span>Size</span><span>Qty</span><span>Price</span>
+      </div>
+      ${(order.cart || []).map(i => `
+      <div class="item-row">
+        <span class="item-name">${i.name}</span>
+        <span class="item-center">${i.size}</span>
+        <span class="item-center">${i.qty}</span>
+        <span class="item-price">R${(i.price * i.qty).toFixed(2)}</span>
+      </div>`).join('')}
+    </div>
+
+    <!-- Total -->
+    <div class="total-bar">
+      <span class="total-label">Total Paid</span>
+      <span class="total-amount">R${Number(order.grandTotal).toFixed(2)}</span>
+    </div>
+
+    <!-- WhatsApp CTA -->
+    <div class="whatsapp-bar">
+      <div class="wa-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+      </div>
+      <div class="wa-text-wrap">
+        <div class="wa-title">Questions about your order? Hit us on WhatsApp</div>
+        <div class="wa-sub">Reply to this receipt or reach out directly — we'll sort you out fast. Keep your order ref handy: <strong>${order.ref}</strong></div>
+      </div>
+    </div>
+
+  </div><!-- /body-pad -->
+
+  <!-- Footer -->
+  <div class="receipt-footer">
+    <div class="footer-left">© 2025 Bokforge Clothing</div>
+    <div class="footer-right">Youth. Culture. Fashion. — Run with it.</div>
+  </div>
+
+</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const win  = window.open(url, '_blank');
+    // Clean up blob after opening
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
+  /* ── Hero tab switching ── */
+  function switchHeroTab(el, tab) {
+    document.querySelectorAll('.hero-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.hero-pane').forEach(p => p.style.display = 'none');
+    el.classList.add('active');
+    document.getElementById('pane-' + tab).style.display = (tab === 'welcome') ? 'flex' : 'block';
+    if (tab === 'track') { setTimeout(() => document.getElementById('track-input').focus(), 50); }
+  }
+
+  /* ── Track order by ref (Supabase) — shared lookup ── */
+  async function lookupOrderRef(rawRef, msgEl) {
+    const raw = (rawRef || '').trim().toUpperCase();
+    if (!raw) { msgEl.className = 'track-msg err'; msgEl.textContent = 'Enter an order ref first.'; return; }
+    msgEl.className = 'track-msg'; msgEl.textContent = 'Looking up…';
+    try {
+      const match = await db.getOrderByRef(raw);
+      if (!match) {
+        msgEl.className = 'track-msg err';
+        msgEl.textContent = 'No order found. Check your ref and try again.';
+        return;
+      }
+      localStorage.setItem('bokforgeOrderRef', match.ref);
+      msgEl.className = 'track-msg ok';
+      msgEl.textContent = 'Found! Loading your order…';
+      setTimeout(() => { window.location.href = 'success.html'; }, 600);
+    } catch(e) {
+      msgEl.className = 'track-msg err';
+      msgEl.textContent = 'Could not connect. Try again.';
+    }
+  }
+
+  async function doTrack() {
+    await lookupOrderRef(document.getElementById('track-input').value, document.getElementById('track-msg'));
+  }
+
+  /* ── Mobile track drawer ── */
+  function toggleMobileTrack() {
+    const tab     = document.getElementById('mobile-track-tab');
+    const drawer  = document.getElementById('mobile-track-drawer');
+    const overlay = document.getElementById('mobile-track-overlay');
+    const label   = document.getElementById('mobile-track-tab-label');
+    const open    = drawer.classList.toggle('open');
+    overlay.classList.toggle('open', open);
+    tab.classList.toggle('open', open);
+    label.textContent = open ? 'Close' : 'Track Order';
+    if (open) setTimeout(() => document.getElementById('mobile-track-input').focus(), 50);
+  }
+
+  async function doMobileTrack() {
+    await lookupOrderRef(document.getElementById('mobile-track-input').value, document.getElementById('mobile-track-msg'));
+  }
+
+  // Allow Enter key in track inputs
+  document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('track-input');
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') doTrack(); });
+    const mInp = document.getElementById('mobile-track-input');
+    if (mInp) mInp.addEventListener('keydown', e => { if (e.key === 'Enter') doMobileTrack(); });
+  });
+</script>
+
+<script>
+  /* ── Load hero banners from Supabase ── */
+  (async function loadBanners() {
+    const container     = document.getElementById('heroSlides');
+    const dotsContainer = document.getElementById('slideDots');
+    const prevBtn       = document.getElementById('slidePrev');
+    const nextBtn       = document.getElementById('slideNext');
+
+    let current = 0, timer;
+
+    function goTo(n) {
+      const slides = container.querySelectorAll('.hero-slide');
+      slides[current].classList.remove('active');
+      if (dotsContainer.children[current]) dotsContainer.children[current].classList.remove('active');
+      current = (n + slides.length) % slides.length;
+      slides[current].classList.add('active');
+      if (dotsContainer.children[current]) dotsContainer.children[current].classList.add('active');
+      resetTimer();
+    }
+    function resetTimer() {
+      clearInterval(timer);
+      const slides = container.querySelectorAll('.hero-slide');
+      if (slides.length > 1) timer = setInterval(() => goTo(current + 1), 5000);
+    }
+
+    try {
+      // Force fresh fetch — no cache
+      const banners = await db.getSetting('banners');
+      const active = Array.isArray(banners) ? banners.filter(b => b.enabled && b.image) : [];
+
+      if (active.length === 0) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        return;
+      }
+
+      // Replace placeholder with real images
+      container.innerHTML = active.map((b, i) => `
+        <div class="hero-slide${i === 0 ? ' active' : ''}">
+          <img src="${b.image}" alt="Banner ${i + 1}" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+        </div>`).join('');
+
+      // Build dots
+      dotsContainer.innerHTML = '';
+      if (active.length > 1) {
+        dotsContainer.style.display = 'flex';
+        active.forEach((_, i) => {
+          const btn = document.createElement('button');
+          btn.className = 'slide-dot' + (i === 0 ? ' active' : '');
+          btn.setAttribute('aria-label', 'Slide ' + (i + 1));
+          btn.addEventListener('click', () => goTo(i));
+          dotsContainer.appendChild(btn);
+        });
+      } else {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+      }
+
+      prevBtn.onclick = () => goTo(current - 1);
+      nextBtn.onclick = () => goTo(current + 1);
+      resetTimer();
+
+    } catch(e) {
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+    }
+  })();
+</script>
+<script src="footer.js"></script>
+</body>
+</html>
